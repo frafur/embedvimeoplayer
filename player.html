@@ -1,0 +1,53 @@
+<html>
+<head>
+<script src="https://player.vimeo.com/api/player.js"></script>
+<script>
+  // This callback is to ensure DOM is ready so we can select the iframe and button elements.
+  // If we have control of where the script goes, it could simply go just below the iframe or last on the page.
+  // Otherwise we need to wrap it in a function to be called later.
+  // We might also not want to wait that long for various reasons. eg. to prevent Next button from being visible.
+  document.onreadystatechange = function () {
+    if (document.readyState == "complete") {
+      init();
+    }
+  }
+  // Wrapper function to be called when the document has finished loading
+  function init() {
+    var iframe = document.querySelector('iframe'); // Select our player iframe. Obviously we might need to be more specific here, or add support for multiple players on a single page
+    var player = new Vimeo.Player(iframe); // Create a player instance
+    var button = document.querySelector('button'); // Also select our "Next" button. Again we probably need to be more specific
+    var seconds = 0; // Initialise our "high water mark" to allow seeking content once it has been played properly
+    var last = 0; // For timing intervals between consecutive onTimeUpdate calls
+    button.style.visibility = "hidden"; // Hide the "Next" button initially
+    // Set up our callback functions
+    player.on('timeupdate', onTimeUpdate);
+    player.on('seeked', onSeek);
+    player.on('ended', onEnded);
+    // As the content plays, this ticks over every 250ms - 500ms or so. Also when seeking.
+    // Increment our high water mark unless there is a sudden positive jump.
+    function onTimeUpdate(data) {
+      var now = performance.now();
+      if (((data.seconds - seconds) * 1000 - now + last) < 100) { // less than 100ms more advanced than we would expect
+        seconds = Math.max(data.seconds, seconds);
+      }
+      last = performance.now();
+    }
+    // When seeking, check against the current high water mark and enforce it
+    function onSeek(data) {
+      if (data.seconds > seconds) {
+        player.setCurrentTime(seconds);
+      }
+    }
+    // When the clip has completed, set the next button to be visible again.
+    function onEnded() {
+      button.style.visibility = "visible";
+    }
+  }
+</script>
+
+</head>
+<body>
+<iframe src="https://player.vimeo.com/video/76979871" width="400" height="225" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
+<button>Next</button>
+</body>
+</html>
